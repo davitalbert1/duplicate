@@ -4,16 +4,8 @@ from PIL import Image
 from typing import Tuple, Optional
 
 def extract_film_from_slide(img: Image.Image) -> Image.Image:
-    """
-    Detects the film aperture window inside a photographed slide frame
-    and extracts only the actual photo content, discarding the plastic/cardboard
-    slide mount, backlighting background, and digitizer borders.
-    
-    If the image is already cropped (e.g. standard flatbed scan or document),
-    returns the original image.
-    """
     orig_w, orig_h = img.size
-    
+
     # Slides photographed with DSLR/camera usually have high resolution and horizontal aspect ratio
     if orig_w > 1800 and orig_h > 1200 and (orig_w / orig_h) > 1.2:
         # Downscale for fast, robust contour analysis
@@ -22,7 +14,7 @@ def extract_film_from_slide(img: Image.Image) -> Image.Image:
         th = int(orig_h * scale)
         small = img.resize((tw, th), Image.Resampling.BILINEAR)
         gray = cv2.cvtColor(np.array(small), cv2.COLOR_RGB2GRAY)
-        
+
         # In typical slide setups (like in E:\backup\digitalização), the slide frame is in the left 75%
         roi_w = int(tw * 0.72)
         roi_gray = gray[:, :roi_w]
@@ -78,16 +70,11 @@ def extract_film_from_slide(img: Image.Image) -> Image.Image:
                 int(0.76 * orig_h)
             )
             return img.crop(fallback_box)
-            
+
     # For scanned documents or non-slide formats
     return img
 
-
 def load_film_crop_fast(img_path: str, target_size: Tuple[int, int] = (224, 224)) -> Image.Image:
-    """
-    Fast loader using JPEG draft subsampling to load high-resolution camera slides
-    in under ~40ms instead of 300ms, while preserving crop fidelity.
-    """
     with Image.open(img_path) as raw:
         w, h = raw.size
         if w > 1800 and h > 1200 and (w / h) > 1.2:

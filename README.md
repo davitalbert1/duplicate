@@ -27,7 +27,7 @@ Solucao especializada desenvolvida com Deep Learning auto-supervisionado (**Meta
 Para treinar ou refinar a IA com suas proprias fotos:
 
 ```powershell
-py -3.14 train.py --data "C:\digitalização" --max_samples 2000 --batch_size 64 --epochs 15
+py -3.14 train.py --data "C:\digitalização" --max_samples 500 --batch_size 8 --epochs 100
 ```
 
 Parametros principais:

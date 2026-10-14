@@ -72,3 +72,12 @@ O sistema combina detecção da área útil do slide, extração de característ
 A arquitetura foi projetada para lidar com diferenças de enquadramento, orientação, exposição, contraste e foco, reduzindo a influência das molduras externas.
 
 O objetivo final é facilitar a organização de grandes coleções de slides fotográficos, automatizando a identificação de imagens potencialmente duplicadas e permitindo a revisão dos resultados pelo usuário.
+
+---
+
+18/18 [00:04<00:00, 3.86it/s, loss=0.0018]
+│   │              │        │
+│   │              │        └── loss do último batch (instantâneo, oscila bastante)
+│   │              └── 3.86 iterações/segundo (= ~0.26 s/batch)
+│   └── batch 18 de 18 desta época
+└── (à esquerda) progresso da época

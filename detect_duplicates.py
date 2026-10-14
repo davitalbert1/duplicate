@@ -8,17 +8,11 @@ import torch
 import torchvision.transforms as T
 from PIL import Image
 from typing import List, Tuple, Dict, Any, Optional
-
 from tqdm import tqdm
 from model import SlideDuplicateModel
 from slide_detector import extract_film_from_slide, load_film_crop_fast
 
-
 class SlideInferenceEngine:
-    """
-    Engine for extracting slide embeddings, comparing images,
-    and computing duplicate probabilities.
-    """
     def __init__(self, checkpoint_path: Optional[str] = "slide_duplicate_model.pt", device: Optional[str] = None):
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -48,10 +42,6 @@ class SlideInferenceEngine:
         ])
 
     def preprocess_image(self, img_path: str) -> torch.Tensor:
-        """
-        Loads an image with fast JPEG draft subsampling, crops the slide film frame,
-        and applies normalization.
-        """
         film_crop = load_film_crop_fast(img_path, target_size=(224, 224))
         tensor = self.transform(film_crop).unsqueeze(0)
         return tensor
@@ -75,11 +65,6 @@ class SlideInferenceEngine:
 
     @staticmethod
     def similarity_to_probability(sim: float, sharp_factor: float = 12.0, threshold: float = 0.72) -> float:
-        """
-        Converts cosine similarity (typically in [0.0, 1.0])
-        into a well-calibrated duplicate probability in [0.0%, 100.0%]
-        using a sigmoid logistic curve centered at the similarity threshold.
-        """
         # Sigmoid transfer function
         prob = 1.0 / (1.0 + np.exp(-sharp_factor * (sim - threshold)))
         return float(prob)
@@ -93,19 +78,14 @@ class SlideInferenceEngine:
         max_images: Optional[int] = None,
         recursive: bool = False
     ) -> List[Dict[str, Any]]:
-        """
-        Compares 1 query image against images in a target folder/collection.
-        """
         all_files = self._get_image_list(collection_path, recursive=recursive)
         # Avoid comparing image with itself if it's inside the collection
         norm_query = os.path.abspath(query_image_path)
         target_files = [f for f in all_files if os.path.abspath(f) != norm_query]
 
-        if max_images and len(target_files) > max_images:
-            target_files = target_files[:max_images]
+        if max_images and len(target_files) > max_images: target_files = target_files[:max_images]
 
-        if not target_files:
-            return []
+        if not target_files: return []
 
         print(f"[*] Processando imagem de consulta: {query_image_path}")
         q_emb = self.compute_embedding(query_image_path)
@@ -139,10 +119,6 @@ class SlideInferenceEngine:
         top_k: int = 50,
         recursive: bool = False
     ) -> List[Dict[str, Any]]:
-        """
-        Scans a folder, finds all pairwise duplicates, and returns them
-        sorted from highest to lowest probability.
-        """
         files = self._get_image_list(folder_path, recursive=recursive)
         if max_images and len(files) > max_images:
             files = files[:max_images]
@@ -197,7 +173,6 @@ class SlideInferenceEngine:
                 if os.path.isfile(full_p) and os.path.splitext(f)[1].lower() in valid_exts:
                     files.append(full_p)
         return sorted(files)
-
 
 def main():
     parser = argparse.ArgumentParser(description="Detector de Fotos Duplicadas em Slides de Filmes")
