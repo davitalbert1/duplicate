@@ -1,28 +1,33 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoModel
-from typing import List, Union
-from PIL import Image
+from typing import Optional
+
+def _load_dinov2_backbone(model_name: str, token: Optional[str] = None):
+    # huggingface_hub ja le HF_TOKEN do ambiente automaticamente, mas resolvemos
+    # explicitamente para repassar ao download de fallback de forma previsivel.
+    if token is None: token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+
+    try:
+        # Modo offline: usa apenas arquivos ja baixados -> nenhuma requisicao ao Hub.
+        return AutoModel.from_pretrained(model_name, local_files_only=True)
+    except (OSError, ValueError):
+        # Cache ausente/corrompido: baixa do Hub (usa o token se disponivel).
+        print(f"[i] Modelo '{model_name}' nao encontrado no cache local. Baixando do Hugging Face Hub...")
+        return AutoModel.from_pretrained(model_name, token=token)
 
 class SlideDuplicateModel(nn.Module):
-    """
-    Deep Neural Network specialized in film slide duplicate detection.
-    Uses Meta's self-supervised foundation model DINOv2 (ViT) as backbone
-    coupled with an L2-normalized MLP projection head trained contrastively
-    to be invariant to slight shifts, exposures, color temperature differences,
-    vignetting, and dust artifacts typical of slide digitization.
-    """
     def __init__(self, model_name: str = "facebook/dinov2-small", projection_dim: int = 256, freeze_backbone: bool = False):
         super().__init__()
         self.model_name = model_name
-        self.backbone = AutoModel.from_pretrained(model_name)
+        self.backbone = _load_dinov2_backbone(model_name)
 
         hidden_dim = self.backbone.config.hidden_size # 384 for dinov2-small
 
         if freeze_backbone:
-            for param in self.backbone.parameters():
-                param.requires_grad = False
+            for param in self.backbone.parameters(): param.requires_grad = False
 
         # Non-linear projection head (SimCLR/DINO style)
         self.projector = nn.Sequential(
@@ -32,9 +37,6 @@ class SlideDuplicateModel(nn.Module):
         )
 
     def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
-        """
-        Takes batch of images (B, C, H, W) and returns normalized embedding vectors (B, projection_dim).
-        """
         outputs = self.backbone(pixel_values=pixel_values)
         # cls token represents global semantic and visual composition
         cls_token = outputs.last_hidden_state[:, 0, :]

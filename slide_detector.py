@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional
+from typing import Tuple
 
 def extract_film_from_slide(img: Image.Image) -> Image.Image:
     orig_w, orig_h = img.size

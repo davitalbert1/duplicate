@@ -1,9 +1,8 @@
-import os
 import random
 import torch
 from concurrent.futures import ThreadPoolExecutor
 from torch.utils.data import Dataset
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageFilter
 import torchvision.transforms as T
 from typing import List, Tuple
 from slide_detector import extract_film_from_slide

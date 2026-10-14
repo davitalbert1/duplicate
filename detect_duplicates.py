@@ -1,16 +1,13 @@
 import os
-import sys
-import glob
 import time
 import argparse
 import numpy as np
 import torch
 import torchvision.transforms as T
-from PIL import Image
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 from tqdm import tqdm
 from model import SlideDuplicateModel
-from slide_detector import extract_film_from_slide, load_film_crop_fast
+from slide_detector import load_film_crop_fast
 
 class SlideInferenceEngine:
     def __init__(self, checkpoint_path: Optional[str] = "slide_duplicate_model.pt", device: Optional[str] = None):
