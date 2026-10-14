@@ -169,9 +169,10 @@ def train_slide_model(
         avg_acc = epoch_acc / max(1, step_count)
         print(f"   [OK] Fim da Epoca {epoch}/{epochs} - Loss Medio: {avg_loss:.4f} | Acuracia: {avg_acc * 100:.2f}%")
 
-        # Save a checkpoint at the end of every completed epoch so training can be
-        # resumed/inspected even if interrupted. We keep the canonical output file
-        # always pointing at the latest weights, plus a per-epoch snapshot.
+        # Save a checkpoint at the end of every completed epoch. The SAME file is
+        # overwritten each epoch (no per-epoch snapshots), so training can be
+        # resumed/inspected if interrupted and the file always holds the latest
+        # weights for inference.
         save_data = {
             "epoch": epoch,
             "model_state_dict": model.state_dict(),
@@ -183,11 +184,7 @@ def train_slide_model(
         }
         os.makedirs(os.path.dirname(os.path.abspath(output_checkpoint)), exist_ok=True)
         torch.save(save_data, output_checkpoint)
-
-        stem, ext = os.path.splitext(output_checkpoint)
-        epoch_path = f"{stem}_epoch{epoch}{ext}"
-        torch.save(save_data, epoch_path)
-        print(f"       Checkpoint salvo: {os.path.abspath(output_checkpoint)} (+ snapshot epoca {epoch})")
+        print(f"       Checkpoint (epoca {epoch}) salvo em: {os.path.abspath(output_checkpoint)}")
 
     # The canonical output file already holds the latest epoch's weights (saved
     # inside the loop after each epoch), so no extra save is needed here.
@@ -196,12 +193,12 @@ def train_slide_model(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Treinamento auto-supervisionado contrastivo para slides")
-    parser.add_argument("--data", type=str, default=r"E:\backup\digitalização", help="Caminho da pasta com as fotos")
+    parser.add_argument("--data", type=str, default=r"C:\digitalização", help="Caminho da pasta com as fotos")
     parser.add_argument("--output", type=str, default="slide_duplicate_model.pt", help="Arquivo de saída do modelo treinado")
-    parser.add_argument("--epochs", type=int, default=5, help="Número de épocas")
+    parser.add_argument("--epochs", type=int, default=100, help="Número de épocas")
     parser.add_argument("--batch_size", type=int, default=8, help="Tamanho do lote")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
-    parser.add_argument("--max_samples", type=int, default=150, help="Máximo de amostras para treino")
+    parser.add_argument("--max_samples", type=int, default=500, help="Máximo de amostras para treino")
     parser.add_argument("--num_workers", type=int, default=None, help="Workers do DataLoader (padrão: 0; o cache é pré-aquecido com threads)")
     parser.add_argument("--no_amp", action="store_true", help="Desativa precision mista (AMP) na GPU")
     args = parser.parse_args()
