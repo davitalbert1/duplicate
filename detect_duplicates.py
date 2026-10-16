@@ -11,20 +11,16 @@ from slide_detector import load_film_crop_fast
 
 class SlideInferenceEngine:
     def __init__(self, checkpoint_path: Optional[str] = "slide_duplicate_model.pt", device: Optional[str] = None):
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
+        if device is None: self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else: self.device = device
 
         self.model = SlideDuplicateModel(model_name="facebook/dinov2-small", projection_dim=256)
 
         if checkpoint_path and os.path.exists(checkpoint_path):
             print(f"[+] Carregando modelo treinado de: {checkpoint_path}")
             checkpoint = torch.load(checkpoint_path, map_location=self.device)
-            if "model_state_dict" in checkpoint:
-                self.model.load_state_dict(checkpoint["model_state_dict"])
-            else:
-                self.model.load_state_dict(checkpoint)
+            if "model_state_dict" in checkpoint: self.model.load_state_dict(checkpoint["model_state_dict"])
+            else: self.model.load_state_dict(checkpoint)
         else:
             if checkpoint_path:
                 print(f"[!] Checkpoint '{checkpoint_path}' nao encontrado. Usando pesos base DINOv2.")
@@ -117,8 +113,7 @@ class SlideInferenceEngine:
         recursive: bool = False
     ) -> List[Dict[str, Any]]:
         files = self._get_image_list(folder_path, recursive=recursive)
-        if max_images and len(files) > max_images:
-            files = files[:max_images]
+        if max_images and len(files) > max_images: files = files[:max_images]
 
         n = len(files)
         if n < 2:
@@ -156,8 +151,7 @@ class SlideInferenceEngine:
 
     def _get_image_list(self, path: str, recursive: bool = False) -> List[str]:
         valid_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff'}
-        if os.path.isfile(path):
-            return [path]
+        if os.path.isfile(path): return [path]
         files = []
         if recursive:
             for root, _, filenames in os.walk(path):
@@ -227,7 +221,7 @@ def main():
         if not pairs:
             print("Nenhum par duplicado encontrado acima do limiar especificado.")
         else:
-            print(f"Rank | Probabilidade | Similaridade | Foto A               <-> Foto B")
+            print(f"Rank | Probabilidade | Similaridade | Foto A <-> Foto B")
             print("-" * 85)
             for rank, item in enumerate(pairs, 1):
                 fa = os.path.basename(item["file_a"])

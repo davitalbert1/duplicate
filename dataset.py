@@ -27,12 +27,7 @@ class SlideTransform:
             T.RandomHorizontalFlip(p=0.05), # small probability of mirror scan
         ])
 
-        self.color_jitter = T.ColorJitter(
-            brightness=0.25,
-            contrast=0.25,
-            saturation=0.20,
-            hue=0.05
-        )
+        self.color_jitter = T.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.20, hue=0.05)
 
         self.to_tensor = T.ToTensor()
 
@@ -41,8 +36,7 @@ class SlideTransform:
         augmented = self.geometric_transform(img)
 
         # Photometric variations
-        if random.random() < 0.8:
-            augmented = self.color_jitter(augmented)
+        if random.random() < 0.8: augmented = self.color_jitter(augmented)
 
         # Occasional slight blur (simulating slight focus difference between shots)
         if random.random() < 0.2:
@@ -68,27 +62,50 @@ class SlideDuplicateDataset(Dataset):
         if not todo: return 0
 
         def _load(path: str):
-            rgb = decode_rgb(path)
-            crop = extract_film_from_slide(rgb).resize((480, 320), Image.Resampling.BILINEAR)
-            return path, crop
+            try:
+                rgb = decode_rgb(path)
+                crop = extract_film_from_slide(rgb).resize((480, 320), Image.Resampling.BILINEAR)
+                return (path, crop, None)
+            except Exception as e:
+                # Devolve o erro em vez de explodir o pool: o chamador remove
+                # o path do dataset (arquivo corrompido / resource-fork etc).
+                return (path, None, e)
 
         workers = max(1, min(max_workers, len(todo)))
+        ok, bad = 0, []
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            for path, crop in ex.map(_load, todo):
-                self._cache[path] = crop
-        return len(todo)
+            for path, crop, err in ex.map(_load, todo):
+                if err is None:
+                    self._cache[path] = crop
+                    ok += 1
+                else:
+                    bad.append(path)
+        if bad:
+            bad_set = set(bad)
+            self.image_paths = [p for p in self.image_paths if p not in bad_set]
+            for p in bad:
+                self._cache.pop(p, None)
+            print(f"   [dataset] {len(bad)} arquivo(s) ilegível(is) removido(s) do treino "
+                  f"(ex.: {bad[0]}).")
+        return ok
 
     def _get_film_image(self, path: str) -> Image.Image:
-        if self.cache_film_crops and path in self._cache:
-            return self._cache[path]
+        if self.cache_film_crops and path in self._cache: return self._cache[path]
 
-        rgb = decode_rgb(path)
+        try:
+            rgb = decode_rgb(path)
+        except Exception:
+            # Arquivo quebrou entre o prewarm e o getitem (ex.: removido do
+            # disco): usa um placeholder cinza em vez de abortar a época.
+            # O prewarm já remove esses paths; isto é só rede de segurança.
+            placeholder = Image.new("RGB", (480, 320), (128, 128, 128))
+            if self.cache_film_crops: self._cache[path] = placeholder
+            return placeholder
         film_crop = extract_film_from_slide(rgb)
         # Store at a manageable resolution to save RAM while maintaining quality
         film_crop_resized = film_crop.resize((480, 320), Image.Resampling.BILINEAR)
 
-        if self.cache_film_crops:
-            self._cache[path] = film_crop_resized
+        if self.cache_film_crops: self._cache[path] = film_crop_resized
 
         return film_crop_resized
 
